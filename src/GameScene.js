@@ -29,13 +29,15 @@ export class GameScene extends Phaser.Scene {
     }
 
     initMusic() {
-        // On ne recrée la musique que si elle n'existe pas déjà sur l'objet global du jeu
-        if (!this.backgroundMusic) {
+        // On vérifie si la clé existe dans le cache et si la musique n'est pas déjà créée
+        if (this.cache.audio.exists('ambient_music') && !this.backgroundMusic) {
             this.backgroundMusic = this.sound.add('ambient_music', { 
                 volume: 0.2, 
                 loop: true 
             });
             this.backgroundMusic.play();
+        } else if (!this.cache.audio.exists('ambient_music')) {
+            console.warn("L'audio 'ambient_music' n'est pas encore chargé.");
         }
     }
 
@@ -130,6 +132,14 @@ export class GameScene extends Phaser.Scene {
         this.muteBtn = this.add.text(width - 50, 40, this.isMuted ? "🔇" : "🔊", { 
             fontSize: '32px', backgroundColor: '#ffffff11', padding: { x: 10, y: 10 } 
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        // --- AJOUT DE LA VERSION ---
+        this.add.text(width - 50, 85, "v0.2.1", { 
+            fontSize: '12px', 
+            fill: '#ffffff', 
+            alpha: 0.5,
+            fontFamily: 'Arial'
+        }).setOrigin(0.5);
         
         // On utilise 'pointerdown' spécifique à l'objet pour éviter les conflits
         this.muteBtn.on('pointerdown', (pointer, x, y, event) => {
