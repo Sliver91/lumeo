@@ -3,17 +3,24 @@ import { GameScene } from './GameScene.js';
 
 const config = {
     type: Phaser.AUTO,
-    // On utilise window.innerWidth/Height pour détecter la taille du navigateur
+    // On lie Phaser à la div du HTML
+    parent: 'game-container',
     width: window.innerWidth, 
     height: window.innerHeight,
-    backgroundColor: '#0a0a12',
+    backgroundColor: '#050510',
     scale: {
-        // Ce mode étire le jeu pour remplir l'espace disponible
-        mode: Phaser.Scale.RESIZE,
-        // Centrage automatique dans le navigateur
+        // FIT est plus stable que RESIZE pour un jeu de plateau comme le nôtre
+        mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    // Gestion de l'audio pour éviter les blocages navigateurs
+    audio: {
+        disableWebAudio: false
     },
     scene: [GameScene]
 };
 
-new Phaser.Game(config);
+// Lancement du jeu
+window.addEventListener('load', () => {
+    new Phaser.Game(config);
+});
