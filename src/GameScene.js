@@ -3,25 +3,27 @@ import Phaser from 'phaser';
 export class GameScene extends Phaser.Scene {
     constructor() {
         super('GameScene');
+        // On ne définit ici que ce qui est permanent
         this.gridSize = 6;
-        this.currentPlayer = 1;
-        this.board = [];
-        this.gameOver = false;
-        this.isAiThinking = false;
-        
-        this.isMuted = false;
-        this.backgroundMusic = null;
-
         this.stats = {
             1: { color: 0x44abff, name: 'COSMONAUTES', hex: '#44abff', icon: '👨‍🚀' },
             2: { color: 0x33ff33, name: 'XÉNOMORPHES', hex: '#33ff33', icon: '👽' }
         };
+        this.isMuted = false;
+        this.backgroundMusic = null;
+    }
+
+    // Nouvelle méthode pour réinitialiser l'état interne à chaque lancement
+    resetGameVariables() {
+        this.currentPlayer = 1;
+        this.board = [];
+        this.gameOver = false;
+        this.isAiThinking = false;
         this.selectedPion = null;
     }
 
     preload() {
         this.load.audio('ambient_music', 'https://cdn.pixabay.com/audio/2022/05/27/audio_180873747b.mp3');
-        // Création d'une texture blanche simple pour les particules
         const graphics = this.make.graphics({ x: 0, y: 0, add: false });
         graphics.fillStyle(0xffffff, 1);
         graphics.fillCircle(4, 4, 4);
@@ -88,6 +90,12 @@ export class GameScene extends Phaser.Scene {
     }
 
     create() {
+        // RESET DES VARIABLES ICI
+        this.resetGameVariables();
+        
+        // Nettoyage des anciens écouteurs pour éviter les doubles clics au restart
+        this.input.off('pointerdown');
+
         const { width, height } = this.cameras.main;
         this.tileSize = Math.floor((height * 0.70) / this.gridSize);
         this.startX = width / 2 - ((this.gridSize - 1) * this.tileSize) / 2;
@@ -97,7 +105,6 @@ export class GameScene extends Phaser.Scene {
         bg.fillGradientStyle(0x050510, 0x050510, 0x100520, 0x100520, 1);
         bg.fillRect(0, 0, width, height);
 
-        // Système de particules global pour la propulsion
         this.vfxEmitter = this.add.particles(0, 0, 'particle', {
             speed: { min: 20, max: 100 },
             scale: { start: 0.4, end: 0 },
@@ -145,11 +152,11 @@ export class GameScene extends Phaser.Scene {
         this.setupInitialPions();
         this.startTurn();
 
-        this.input.once('pointerdown', () => {
-            if (!this.isMuted) this.initMusic();
+        // On utilise l'input global de manière propre
+        this.input.on('pointerdown', (pointer) => {
+            if (!this.backgroundMusic && !this.isMuted) this.initMusic();
+            this.handleInput(pointer);
         });
-
-        this.input.on('pointerdown', (pointer) => this.handleInput(pointer));
     }
 
     createAvatar(x, y, player) {
@@ -199,9 +206,11 @@ export class GameScene extends Phaser.Scene {
         [this.portraitJ1, this.portraitJ2].forEach(p => {
             if (p && Math.random() > 0.98) {
                 p.container.x += Phaser.Math.Between(-3, 3);
-                this.time.delayedCall(50, () => p.container.x = (p === this.portraitJ1 ? this.cameras.main.width / 2 - 250 : this.cameras.main.width / 2 + 250));
+                this.time.delayedCall(50, () => {
+                   if(this.scene.isActive()) p.container.x = (p === this.portraitJ1 ? this.cameras.main.width / 2 - 250 : this.cameras.main.width / 2 + 250);
+                });
                 p.avatar.setAlpha(0.5);
-                this.time.delayedCall(100, () => p.avatar.setAlpha(1));
+                this.time.delayedCall(100, () => { if(this.scene.isActive()) p.avatar.setAlpha(1); });
             }
         });
     }
@@ -259,7 +268,7 @@ export class GameScene extends Phaser.Scene {
                 } else if (isBoost) {
                     tile.setFillStyle(0x00ffff, 0.1);
                     tile.setStrokeStyle(2, 0x00ffff, 0.4);
-                    const bIcon = this.add.text(px, py, "✨", {fontSize: '30px'}).setOrigin(5);
+                    const bIcon = this.add.text(px, py, "✨", {fontSize: '30px'}).setOrigin(0.5);
                     this.tweens.add({ targets: bIcon, alpha: 0.2, duration: 800, yoyo: true, repeat: -1 });
                 }
                 
@@ -282,7 +291,6 @@ export class GameScene extends Phaser.Scene {
             const base = this.add.ellipse(0, 15, this.tileSize * 0.6, 10, color, 0.2);
             const unit = this.add.text(0, 0, icon, { fontSize: `${this.tileSize * 0.5}px` }).setOrigin(0.5);
             
-            // Éclairage Dynamique : Lueur colorée sur les cases adjacentes
             this.createDynamicLight(cell, color);
 
             pionContainer.add([base, unit]);
@@ -307,7 +315,6 @@ export class GameScene extends Phaser.Scene {
     }
 
     createDynamicLight(cell, color) {
-        // Crée une lueur qui s'étend sur les cases adjacentes
         const neighbors = this.getNeighbors(cell, 1);
         neighbors.forEach(n => {
             const glow = this.add.circle(n.container.x, n.container.y, this.tileSize / 2, color, 0);
@@ -369,7 +376,6 @@ export class GameScene extends Phaser.Scene {
         const range = cell.isBoost ? 2 : 1;
         if (cell.isBoost) this.playSpaceSound('boost');
 
-        // Ondes de Choc lors de l'infection
         this.createShockwave(cell.container.x, cell.container.y, this.stats[this.currentPlayer].color);
 
         for (let y = -range; y <= range; y++) {
@@ -385,13 +391,14 @@ export class GameScene extends Phaser.Scene {
         if(victims.length > 0) this.playSpaceSound('infect');
         victims.forEach((v, i) => {
             this.time.delayedCall(i * 150, () => {
+                if(!this.scene.isActive()) return;
                 const line = this.add.line(0, 0, cell.container.x, cell.container.y, v.container.x, v.container.y, this.stats[this.currentPlayer].color)
                     .setOrigin(0).setLineWidth(2).setAlpha(0.8);
                 this.tweens.add({ targets: line, alpha: 0, duration: 300, onComplete: () => line.destroy() });
                 this.setOwner(v, this.currentPlayer);
             });
         });
-        this.time.delayedCall(victims.length * 150 + 200, () => this.endTurn());
+        this.time.delayedCall(victims.length * 150 + 200, () => { if(this.scene.isActive()) this.endTurn(); });
     }
 
     createShockwave(x, y, color) {
@@ -409,12 +416,14 @@ export class GameScene extends Phaser.Scene {
 
     handleInput(pointer) {
         if (this.gameOver || this.currentPlayer === 2 || this.isAiThinking) return;
+        
         let closest = null;
         let minDist = 50;
         this.board.flat().forEach(cell => {
             const d = Phaser.Math.Distance.Between(pointer.x, pointer.y, cell.container.x, cell.container.y);
             if (d < minDist) { minDist = d; closest = cell; }
         });
+
         if (closest) {
             if (closest.owner === this.currentPlayer) {
                 this.playSpaceSound('select');
@@ -434,10 +443,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     executeMove(from, to) {
+        if (this.gameOver) return;
         const dist = Math.max(Math.abs(from.x - to.x), Math.abs(from.y - to.y));
         const color = this.stats[this.currentPlayer].color;
 
-        // VFX Particules de Propulsion
         if (dist === 2) { 
             this.vfxEmitter.setConfig({
                 x: from.container.x,
@@ -453,7 +462,6 @@ export class GameScene extends Phaser.Scene {
             if (from.pionObj) from.pionObj.destroy();
             from.pionObj = null; 
         } else {
-            // Propulsion légère pour le clone (saut de 1)
             this.vfxEmitter.emitParticleAt(from.container.x, from.container.y, 10);
         }
 
@@ -462,28 +470,17 @@ export class GameScene extends Phaser.Scene {
     }
 
     setupInitialPions() {
-        // Définition de zones de départ éloignées (coins et bords opposés)
         const possiblePositions = [
-            {x: 0, y: 0}, 
-            {x: 1, y: 0}, 
-            {x: 0, y: 1},
-            {x: this.gridSize - 1, y: 1},
-            {x: this.gridSize - 2, y: 0}
+            {x: 0, y: 0}, {x: 1, y: 0}, {x: 0, y: 1},
+            {x: this.gridSize - 1, y: 1}, {x: this.gridSize - 2, y: 0}
         ];
-
-        // Nombre aléatoire de groupes de pions (1 à 3)
         const quantity = Phaser.Math.Between(1, 3);
-        
-        // Mélanger les positions possibles pour l'aléa
         const shuffled = Phaser.Utils.Array.Shuffle(possiblePositions);
         const selectedCoords = shuffled.slice(0, quantity);
 
         selectedCoords.forEach(pos => {
-            // Placement Joueur 1
             const cellJ1 = this.board[pos.y][pos.x];
             if (cellJ1.owner !== -1) this.setOwner(cellJ1, 1, true);
-
-            // Placement Joueur 2 par SYMETRIE CENTRALE (Eloignement maximum assuré)
             const symX = (this.gridSize - 1) - pos.x;
             const symY = (this.gridSize - 1) - pos.y;
             const cellJ2 = this.board[symY][symX];
@@ -496,7 +493,7 @@ export class GameScene extends Phaser.Scene {
         if (this.currentPlayer === 2) {
             this.statusText.setText("ESSAIE DE SURVIVRE À L'INVASION...");
             this.isAiThinking = true;
-            this.time.delayedCall(1000, () => this.makeAiMove());
+            this.time.delayedCall(1000, () => { if(this.scene.isActive()) this.makeAiMove(); });
         } else {
             this.isAiThinking = false;
             this.statusText.setText(`TOUR DES ${this.stats[1].name}`);
@@ -504,6 +501,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     makeAiMove() {
+        if (this.gameOver) return;
         let bestMove = null;
         let maxScore = -999;
         const aiPions = this.board.flat().filter(c => c.owner === 2);
@@ -542,6 +540,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     endTurn() {
+        if (this.gameOver) return;
         this.currentPlayer = (this.currentPlayer === 1) ? 2 : 1;
         this.clearSelection();
         this.refreshUI();
@@ -571,24 +570,16 @@ export class GameScene extends Phaser.Scene {
     checkGameOver() {
         const c1 = this.board.flat().filter(c => c.owner === 1).length;
         const c2 = this.board.flat().filter(c => c.owner === 2).length;
-
-        // Si un joueur n'a plus de pions, il a perdu
-        if (c1 === 0 || c2 === 0) {
+        if (c1 === 0 || c2 === 0 || this.board.flat().every(c => c.owner !== 0)) {
             this.finishGame();
             return true;
         }
-
-        // Si le plateau est rempli
-        if (this.board.flat().every(c => c.owner !== 0)) {
-            this.finishGame();
-            return true;
-        }
-        
         return false;
     }
 
     finishGame() {
         this.gameOver = true;
+        this.isAiThinking = false;
         const c1 = this.board.flat().filter(c => c.owner === 1).length;
         const c2 = this.board.flat().filter(c => c.owner === 2).length;
         let result = c1 === c2 ? "PACTE DE NON-AGRESSION" : (c1 > c2 ? `LES HUMAINS ONT SURVÉCU !` : `LA TERRE EST ENVAHIE !`);
@@ -628,18 +619,8 @@ export class GameScene extends Phaser.Scene {
         this.uiJ2.setText(`${c2}`);
 
         const fullWidth = this.cameras.main.width * 0.8;
-        this.tweens.add({
-            targets: this.domBarJ1,
-            width: (c1 / total) * fullWidth,
-            duration: 500,
-            ease: 'Power2'
-        });
-        this.tweens.add({
-            targets: this.domBarJ2,
-            width: (c2 / total) * fullWidth,
-            duration: 500,
-            ease: 'Power2'
-        });
+        this.tweens.add({ targets: this.domBarJ1, width: (c1 / total) * fullWidth, duration: 500, ease: 'Power2' });
+        this.tweens.add({ targets: this.domBarJ2, width: (c2 / total) * fullWidth, duration: 500, ease: 'Power2' });
 
         this.updateAvatarExpression();
     }
