@@ -29,7 +29,6 @@ export class GameScene extends Phaser.Scene {
     }
 
     initMusic() {
-        // On ne recrée la musique que si elle n'existe pas déjà sur l'objet global du jeu
         if (!this.backgroundMusic) {
             this.backgroundMusic = this.sound.add('ambient_music', { 
                 volume: 0.2, 
@@ -89,10 +88,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     create() {
-        // IMPORTANT: Nettoyage des tweens et timers précédents
         this.tweens.killAll();
         this.time.removeAllEvents();
-        
         this.resetGameVariables();
         
         const { width, height } = this.cameras.main;
@@ -131,7 +128,6 @@ export class GameScene extends Phaser.Scene {
             fontSize: '32px', backgroundColor: '#ffffff11', padding: { x: 10, y: 10 } 
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
         
-        // On utilise 'pointerdown' spécifique à l'objet pour éviter les conflits
         this.muteBtn.on('pointerdown', (pointer, x, y, event) => {
             event.stopPropagation();
             this.toggleMute();
@@ -148,13 +144,12 @@ export class GameScene extends Phaser.Scene {
         this.add.text(width / 2 - scoreCenterOffset, 145, this.stats[1].name, { fontSize: '10px', fill: this.stats[1].hex, letterSpacing: 4 }).setOrigin(0.5);
         this.add.text(width / 2 + scoreCenterOffset, 145, this.stats[2].name, { fontSize: '10px', fill: this.stats[2].hex, letterSpacing: 4 }).setOrigin(0.5);
 
-        // --- BOUTON RESTART ---
         this.restartBtn = this.add.text(width / 2, height - 50, "INITIALISER NOUVELLE MISSION", {
             fontSize: '20px', fill: '#00ffff', backgroundColor: '#000000', stroke: '#00ffff', strokeThickness: 2, padding: { x: 20, y: 10 }
         }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setAlpha(0).setDepth(100);
         
         this.restartBtn.on('pointerdown', (pointer, x, y, event) => {
-            event.stopPropagation(); // Empêche le clic de se propager au plateau
+            event.stopPropagation();
             this.restartGame();
         });
 
@@ -162,7 +157,6 @@ export class GameScene extends Phaser.Scene {
         this.setupInitialPions();
         this.startTurn();
 
-        // Listener global pour le plateau, avec vérification du bouton
         this.input.on('pointerdown', (pointer) => {
             if (this.gameOver) return;
             if (!this.backgroundMusic && !this.isMuted) this.initMusic();
@@ -237,17 +231,23 @@ export class GameScene extends Phaser.Scene {
                 const container = this.add.container(px, py);
                 let isObstacle = blackHoleCoords.some(c => c.x === x && c.y === y);
                 let isBoost = nebulaCoord && nebulaCoord.x === x && nebulaCoord.y === y;
+                
                 const tile = this.add.rectangle(0, 0, this.tileSize - 8, this.tileSize - 8, 0xffffff, 0.03);
                 tile.setStrokeStyle(1, 0xffffff, 0.1).setRotation(Phaser.Math.DegToRad(45)); 
+                container.add(tile);
+
                 if (isObstacle) {
                     tile.setFillStyle(0x000000, 0.8).setStrokeStyle(2, 0x9900ff, 0.5);
-                    this.add.text(px, py, "🌑", {fontSize: '30px'}).setOrigin(0.5).setAlpha(0.5);
+                    const obsIcon = this.add.text(0, 0, "🌑", {fontSize: '30px'}).setOrigin(0.5).setAlpha(0.5);
+                    container.add(obsIcon);
                 } else if (isBoost) {
                     tile.setFillStyle(0x00ffff, 0.1).setStrokeStyle(2, 0x00ffff, 0.4);
-                    const bIcon = this.add.text(px, py, "✨", {fontSize: '30px'}).setOrigin(0.5);
+                    // CORRECTION ICI : Ajouté au container en (0,0) pour un centrage parfait
+                    const bIcon = this.add.text(0, 0, "✨", {fontSize: '30px'}).setOrigin(0.5);
+                    container.add(bIcon);
                     this.tweens.add({ targets: bIcon, alpha: 0.2, duration: 800, yoyo: true, repeat: -1 });
                 }
-                container.add(tile);
+                
                 this.board[y][x] = { x, y, owner: isObstacle ? -1 : 0, isBoost, visual: tile, container, pionObj: null };
             }
         }
@@ -484,18 +484,13 @@ export class GameScene extends Phaser.Scene {
         const c2 = this.board.flat().filter(c => c.owner === 2).length;
         let result = c1 === c2 ? "PACTE DE NON-AGRESSION" : (c1 > c2 ? `LES HUMAINS ONT SURVÉCU !` : `LA TERRE EST ENVAHIE !`);
         this.statusText.setText(result).setAlpha(1).setFontSize('24px');
-        
-        // On affiche le bouton
         this.restartBtn.setAlpha(1);
     }
 
     restartGame() {
-        // Nettoyage de Phaser
         this.input.removeAllListeners();
         this.tweens.killAll();
         this.time.removeAllEvents();
-        
-        // Redémarrage complet de la scène
         this.scene.restart();
     }
 
