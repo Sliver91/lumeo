@@ -29,11 +29,14 @@ export class GameScene extends Phaser.Scene {
     }
 
     initMusic() {
+        // On vérifie si la musique existe déjà globalement pour ne pas superposer les pistes au restart
         if (!this.backgroundMusic) {
             this.backgroundMusic = this.sound.add('ambient_music', { 
                 volume: 0.2, 
                 loop: true 
             });
+            this.backgroundMusic.play();
+        } else if (!this.backgroundMusic.isPlaying) {
             this.backgroundMusic.play();
         }
     }
@@ -90,7 +93,7 @@ export class GameScene extends Phaser.Scene {
     create() {
         this.resetGameVariables();
         
-        // IMPORTANT: Nettoyage complet des inputs au démarrage
+        // Nettoyage impératif pour éviter les bugs de clics fantômes au restart
         this.input.removeAllListeners();
 
         const { width, height } = this.cameras.main;
@@ -141,30 +144,21 @@ export class GameScene extends Phaser.Scene {
         this.add.text(width / 2 - scoreCenterOffset, 145, this.stats[1].name, { fontSize: '10px', fill: this.stats[1].hex, letterSpacing: 4 }).setOrigin(0.5);
         this.add.text(width / 2 + scoreCenterOffset, 145, this.stats[2].name, { fontSize: '10px', fill: this.stats[2].hex, letterSpacing: 4 }).setOrigin(0.5);
 
-        // Correction du bouton Restart : on s'assure qu'il est bien au-dessus de tout (Depth)
-        this.restartBtn = this.add.text(width / 2, height - 50, "INITIALISER NOUVELLE MISSION", {
-            fontSize: '20px', fill: '#00ffff', backgroundColor: '#000000', stroke: '#00ffff', strokeThickness: 2, padding: { x: 20, y: 10 }
-        }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setAlpha(0).setDepth(100);
+        // BOUTON RESTART (Caché au début)
+        this.restartBtn = this.add.text(width / 2, height - 80, "RÉINITIALISER TOUTE LA MISSION", {
+            fontSize: '24px', fill: '#00ffff', backgroundColor: '#000000', stroke: '#00ffff', strokeThickness: 2, padding: { x: 30, y: 15 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setAlpha(0).setDepth(1000).setVisible(false);
         
-        // On attache l'événement une seule fois
-        this.restartBtn.on('pointerdown', () => {
-            this.restartGame();
-        });
+        this.restartBtn.on('pointerdown', () => this.restartGame());
 
         this.createBoard();
         this.setupInitialPions();
         this.startTurn();
 
+        // Gestionnaire de clics global pour le plateau
         this.input.on('pointerdown', (pointer) => {
-            // On ne déclenche la logique de jeu que si on ne clique pas sur le bouton restart
-            if (this.restartBtn.alpha > 0 && 
-                pointer.x > this.restartBtn.x - this.restartBtn.width/2 && 
-                pointer.x < this.restartBtn.x + this.restartBtn.width/2 &&
-                pointer.y > this.restartBtn.y - this.restartBtn.height/2 &&
-                pointer.y < this.restartBtn.y + this.restartBtn.height/2) {
-                return;
-            }
-
+            // Empêcher de jouer si on clique sur le bouton restart ou si la partie est finie
+            if (this.gameOver) return;
             if (!this.backgroundMusic && !this.isMuted) this.initMusic();
             this.handleInput(pointer);
         });
@@ -485,15 +479,22 @@ export class GameScene extends Phaser.Scene {
         let result = c1 === c2 ? "PACTE DE NON-AGRESSION" : (c1 > c2 ? `LES HUMAINS ONT SURVÉCU !` : `LA TERRE EST ENVAHIE !`);
         this.statusText.setText(result).setAlpha(1).setFontSize('24px');
         
-        // On affiche le bouton
-        this.restartBtn.setAlpha(1);
+        // Affichage du bouton Reset avec une animation de fondu
+        this.restartBtn.setVisible(true);
+        this.tweens.add({
+            targets: this.restartBtn,
+            alpha: 1,
+            duration: 500
+        });
     }
 
     restartGame() {
-        // Nettoyage manuel avant le restart
+        // Arrêt de tous les processus en cours
         this.input.removeAllListeners();
         this.tweens.killAll();
-        // Redémarrage de la scène
+        this.time.removeAllEvents();
+        
+        // On redémarre proprement la scène
         this.scene.restart();
     }
 
