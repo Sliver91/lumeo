@@ -87,28 +87,55 @@ export class GameScene extends Phaser.Scene {
         osc.stop(now + 0.6);
     }
 
-    create() {
+   create() {
+        // 1. RESET CRITIQUE DES VARIABLES
         this.resetGameVariables();
         
-        // IMPORTANT: Nettoyage complet des inputs au démarrage
-        this.input.removeAllListeners();
+        // 2. NETTOYAGE DES ÉCOUTEURS (évite les bugs de clics fantômes au restart)
+        this.input.off('pointerdown');
 
         const { width, height } = this.cameras.main;
-        this.tileSize = Math.floor((height * 0.70) / this.gridSize);
-        this.startX = width / 2 - ((this.gridSize - 1) * this.tileSize) / 2;
-        this.startY = height / 2 + 80 - ((this.gridSize - 1) * this.tileSize) / 2;
+        
+        // Initialisation de la musique (seulement si elle n'existe pas déjà)
+        // Cela évite que la musique se superpose à chaque restart
+        if (!this.backgroundMusic) {
+            this.initMusic();
+        }
 
-        const bg = this.add.graphics();
-        bg.fillGradientStyle(0x050510, 0x050510, 0x100520, 0x100520, 1);
-        bg.fillRect(0, 0, width, height);
+        // ... (le reste de ton code create reste identique jusqu'au bouton restart)
 
-        this.vfxEmitter = this.add.particles(0, 0, 'particle', {
-            speed: { min: 20, max: 100 },
-            scale: { start: 0.4, end: 0 },
-            alpha: { start: 0.6, end: 0 },
-            lifespan: 800,
-            blendMode: 'ADD',
-            emitting: false
+        this.restartBtn = this.add.text(width / 2, height - 50, "INITIALISER NOUVELLE MISSION", {
+            fontSize: '20px', 
+            fill: '#00ffff', 
+            backgroundColor: '#ffffff11', 
+            padding: { x: 20, y: 10 }
+        })
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true })
+        .setAlpha(0) 
+        .on('pointerover', () => this.restartBtn.setBackgroundColor('#ffffff22'))
+        .on('pointerout', () => this.restartBtn.setBackgroundColor('#ffffff11'))
+        .on('pointerdown', () => this.restartGame());
+
+        this.createBoard();
+        this.setupInitialPions();
+        this.startTurn();
+
+        this.input.on('pointerdown', (pointer) => {
+            this.handleInput(pointer);
+        });
+    }
+
+    // ... (garder les autres méthodes)
+
+    restartGame() {
+        // Animation de fondu avant de restart pour faire "propre"
+        this.cameras.main.fadeOut(500, 0, 0, 0);
+        this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+            // On stoppe tous les tweens en cours pour éviter les erreurs de calcul
+            this.tweens.killAll();
+            // On relance la scène
+            this.scene.restart();
         });
 
         for(let i=0; i<150; i++) {
@@ -519,3 +546,4 @@ export class GameScene extends Phaser.Scene {
         this.updateAvatarExpression();
     }
 }
+
