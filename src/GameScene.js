@@ -1,4 +1,4 @@
-// version v0.2.4 - Debug Console & High Visibility Version 👽
+// version v0.2.5 - UI Position Update & Version Bump 👽
 import Phaser from 'phaser';
 
 export class GameScene extends Phaser.Scene {
@@ -13,7 +13,7 @@ export class GameScene extends Phaser.Scene {
         this.backgroundMusic = null;
         
         // --- LOG VERSION CONSOLE ---
-        console.log("%c LUMEO - VERSION ACTUELLE : v0.2.4 ", "background: #222; color: #00ffff; font-weight: bold; font-size: 20px; padding: 5px; border: 1px solid #00ffff;");
+        console.log("%c LUMEO - VERSION ACTUELLE : V0.2.5 ", "background: #222; color: #00ffff; font-weight: bold; font-size: 20px; padding: 5px; border: 1px solid #00ffff;");
     }
 
     resetGameVariables() {
@@ -146,23 +146,23 @@ export class GameScene extends Phaser.Scene {
             this.toggleMute();
         });
 
-        // --- AFFICHAGE VERSION v0.2.4 (EN GROS EN HAUT À GAUCHE) ---
-        const versionLabel = this.add.text(20, 20, "SYS_VER: v0.2.4", { 
-            fontSize: '22px', 
+        // --- AFFICHAGE VERSION V0.2.5 (BAS À DROITE) ---
+        const versionLabel = this.add.text(width - 20, height - 20, "Version : V0.2.5", { 
+            fontSize: '14px', 
             fill: '#00ffff', 
             fontFamily: 'Courier New',
             fontStyle: 'bold',
             stroke: '#00ffff',
             strokeThickness: 1,
             backgroundColor: '#000000aa',
-            padding: { x: 10, y: 5 }
-        }).setDepth(1000).setAlpha(0.8);
+            padding: { x: 8, y: 4 }
+        }).setOrigin(1, 1).setDepth(1000).setAlpha(0.8);
 
         // Animation de clignotement type radar pour la version
         this.tweens.add({
             targets: versionLabel,
             alpha: 0.4,
-            duration: 800,
+            duration: 1000,
             yoyo: true,
             repeat: -1
         });
@@ -544,4 +544,3 @@ export class GameScene extends Phaser.Scene {
         this.updateAvatarExpression();
     }
 }
-
