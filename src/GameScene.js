@@ -29,7 +29,6 @@ export class GameScene extends Phaser.Scene {
     }
 
     initMusic() {
-        // On ne recrée la musique que si elle n'existe pas déjà sur l'objet global du jeu
         if (!this.backgroundMusic) {
             this.backgroundMusic = this.sound.add('ambient_music', { 
                 volume: 0.2, 
@@ -89,7 +88,6 @@ export class GameScene extends Phaser.Scene {
     }
 
     create() {
-        // IMPORTANT: Nettoyage des tweens et timers précédents
         this.tweens.killAll();
         this.time.removeAllEvents();
         
@@ -103,6 +101,14 @@ export class GameScene extends Phaser.Scene {
         const bg = this.add.graphics();
         bg.fillGradientStyle(0x050510, 0x050510, 0x100520, 0x100520, 1);
         bg.fillRect(0, 0, width, height);
+
+        // --- AFFICHAGE DE LA VERSION (v0.2) ---
+        this.add.text(width - 15, height - 15, "v0.2", {
+            fontSize: '14px',
+            fill: '#ffffff',
+            fontFamily: 'Arial',
+            alpha: 0.5
+        }).setOrigin(1, 1);
 
         this.vfxEmitter = this.add.particles(0, 0, 'particle', {
             speed: { min: 20, max: 100 },
@@ -131,7 +137,6 @@ export class GameScene extends Phaser.Scene {
             fontSize: '32px', backgroundColor: '#ffffff11', padding: { x: 10, y: 10 } 
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
         
-        // On utilise 'pointerdown' spécifique à l'objet pour éviter les conflits
         this.muteBtn.on('pointerdown', (pointer, x, y, event) => {
             event.stopPropagation();
             this.toggleMute();
@@ -148,13 +153,12 @@ export class GameScene extends Phaser.Scene {
         this.add.text(width / 2 - scoreCenterOffset, 145, this.stats[1].name, { fontSize: '10px', fill: this.stats[1].hex, letterSpacing: 4 }).setOrigin(0.5);
         this.add.text(width / 2 + scoreCenterOffset, 145, this.stats[2].name, { fontSize: '10px', fill: this.stats[2].hex, letterSpacing: 4 }).setOrigin(0.5);
 
-        // --- BOUTON RESTART ---
         this.restartBtn = this.add.text(width / 2, height - 50, "INITIALISER NOUVELLE MISSION", {
             fontSize: '20px', fill: '#00ffff', backgroundColor: '#000000', stroke: '#00ffff', strokeThickness: 2, padding: { x: 20, y: 10 }
         }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setAlpha(0).setDepth(100);
         
         this.restartBtn.on('pointerdown', (pointer, x, y, event) => {
-            event.stopPropagation(); // Empêche le clic de se propager au plateau
+            event.stopPropagation();
             this.restartGame();
         });
 
@@ -162,7 +166,6 @@ export class GameScene extends Phaser.Scene {
         this.setupInitialPions();
         this.startTurn();
 
-        // Listener global pour le plateau, avec vérification du bouton
         this.input.on('pointerdown', (pointer) => {
             if (this.gameOver) return;
             if (!this.backgroundMusic && !this.isMuted) this.initMusic();
@@ -200,7 +203,7 @@ export class GameScene extends Phaser.Scene {
             if (p && Math.random() > 0.98) {
                 p.container.x += Phaser.Math.Between(-3, 3);
                 this.time.delayedCall(50, () => {
-                   if(this.scene.isActive()) p.container.x = (p === this.portraitJ1 ? this.cameras.main.width / 2 - 250 : this.cameras.main.width / 2 + 250);
+                    if(this.scene.isActive()) p.container.x = (p === this.portraitJ1 ? this.cameras.main.width / 2 - 250 : this.cameras.main.width / 2 + 250);
                 });
                 p.avatar.setAlpha(0.5);
                 this.time.delayedCall(100, () => { if(this.scene.isActive()) p.avatar.setAlpha(1); });
@@ -484,18 +487,13 @@ export class GameScene extends Phaser.Scene {
         const c2 = this.board.flat().filter(c => c.owner === 2).length;
         let result = c1 === c2 ? "PACTE DE NON-AGRESSION" : (c1 > c2 ? `LES HUMAINS ONT SURVÉCU !` : `LA TERRE EST ENVAHIE !`);
         this.statusText.setText(result).setAlpha(1).setFontSize('24px');
-        
-        // On affiche le bouton
         this.restartBtn.setAlpha(1);
     }
 
     restartGame() {
-        // Nettoyage de Phaser
         this.input.removeAllListeners();
         this.tweens.killAll();
         this.time.removeAllEvents();
-        
-        // Redémarrage complet de la scène
         this.scene.restart();
     }
 
