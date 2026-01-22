@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-
+  //v0.2.1
 export class GameScene extends Phaser.Scene {
     constructor() {
         super('GameScene');
@@ -521,3 +521,4 @@ export class GameScene extends Phaser.Scene {
         this.updateAvatarExpression();
     }
 }
+
